@@ -7,21 +7,21 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#f8f7f4;--bg2:#ffffff;--bg3:#f0efe9;--bg4:#e8e7e0;
-  --text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
-  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
-  --green:#1D9E75;--green-bg:#E1F5EE;--green-dark:#0F6E56;
-  --red:#D85A30;--red-bg:#FAECE7;--red-dark:#993C1D;
-  --purple:#7F77DD;--purple-bg:#EEEDFE;--purple-dark:#534AB7;
-  --amber:#BA7517;--amber-bg:#FAEEDA;
-  --r:12px;--rs:8px;
+  --bg:#F8FAFC;--bg2:#FFFFFF;--bg3:#F1F5F9;--bg4:#E2E8F0;
+  --text:#0F172A;--text2:#64748B;--text3:#94A3B8;
+  --border:rgba(15,23,42,0.07);--border2:rgba(15,23,42,0.13);
+  --green:#059669;--green-bg:#ECFDF5;--green-dark:#065F46;
+  --red:#DC2626;--red-bg:#FEF2F2;--red-dark:#991B1B;
+  --purple:#4F46E5;--purple-bg:#EEF2FF;--purple-dark:#3730A3;
+  --amber:#D97706;--amber-bg:#FFFBEB;
+  --r:10px;--rs:7px;
 }
 @media(prefers-color-scheme:dark){
   :root{
-    --bg:#1a1a18;--bg2:#242422;--bg3:#2c2c2a;--bg4:#343431;
-    --text:#f0efe9;--text2:#b4b2a9;--text3:#888780;
-    --border:rgba(255,255,255,0.09);--border2:rgba(255,255,255,0.16);
-    --green-bg:#085041;--red-bg:#4A1B0C;--purple-bg:#26215C;--amber-bg:#412402;
+    --bg:#0F172A;--bg2:#1E293B;--bg3:#273549;--bg4:#334155;
+    --text:#F1F5F9;--text2:#94A3B8;--text3:#64748B;
+    --border:rgba(241,245,249,0.07);--border2:rgba(241,245,249,0.13);
+    --green-bg:#022C22;--red-bg:#450A0A;--purple-bg:#1E1B4B;--amber-bg:#431407;
   }
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
@@ -194,6 +194,10 @@ create policy "allow_all" on transactions
   <input type="text" id="s-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
   <button class="btn btn-green" onclick="doSetup()">연결하고 시작하기</button>
   <div id="setup-err"></div>
+  <div style="text-align:center;margin-top:14px;padding-top:14px;border-top:0.5px solid var(--border)">
+    <span style="font-size:12px;color:var(--text3)">아직 설정 전이에요? &nbsp;</span>
+    <button class="btn btn-sm" onclick="loadDemoData()" style="font-size:12px">샘플 데이터로 미리보기 →</button>
+  </div>
 </div>
 </div>
 
@@ -450,18 +454,68 @@ const CATS = {
   expense: ['고정 지출','변동 지출','식비','교통/차량','통신비','구독 서비스','의료','기타 지출'],
   invest:  ['주식/ETF','부동산','코인','예금/적금','연금','기타 투자']
 };
-const SRC_COLORS = ['#1D9E75','#5DCAA5','#378ADD','#7F77DD','#EF9F27','#D85A30','#85B7EB','#F0997B'];
+const SRC_COLORS = ['#059669','#3B82F6','#8B5CF6','#F59E0B','#EC4899','#0EA5E9','#6366F1','#10B981'];
 const TYPE_LBL = {income:'수입',expense:'지출',invest:'투자'};
 
 // ────────────────────────────────────────────
 // State
 // ────────────────────────────────────────────
 let sb = null;
+let demoMode = false;
 let cache = [];        // all loaded transactions for current range
 let allCache = [];     // for settlement alerts (all unsettled)
 let editId = null;
 let curFilter = 'all';
 let flowChartObj = null;
+
+// ── 데모 데이터 (1045만원 / 14개 출처) ──
+const DEMO_INCOME = [
+  {id:'d01',type:'income',name:'A사 5월 개발',amount:2200000,source:'프리랜서 A사',category:'프리랜서 수입',date:'2026-05-10',settled:true,settled_on:'2026-05-10'},
+  {id:'d02',type:'income',name:'B사 디자인 작업',amount:1800000,source:'프리랜서 B사',category:'프리랜서 수입',date:'2026-05-08',settled:false,settlement_date:'2026-05-25'},
+  {id:'d03',type:'income',name:'유튜브 광고수익',amount:800000,source:'유튜브',category:'부업 수입',date:'2026-05-15',settled:true},
+  {id:'d04',type:'income',name:'블로그 수익',amount:420000,source:'블로그',category:'부업 수입',date:'2026-05-12',settled:true},
+  {id:'d05',type:'income',name:'클래스101 강의',amount:700000,source:'클래스101',category:'강의/컨설팅',date:'2026-05-14',settled:true},
+  {id:'d06',type:'income',name:'배당금',amount:400000,source:'증권계좌',category:'배당/이자',date:'2026-05-05',settled:true},
+  {id:'d07',type:'income',name:'C사 기획 프로젝트',amount:1500000,source:'프리랜서 C사',category:'프리랜서 수입',date:'2026-05-20',settled:false,settlement_date:'2026-05-30'},
+  {id:'d08',type:'income',name:'D사 영상 편집',amount:500000,source:'프리랜서 D사',category:'부업 수입',date:'2026-05-07',settled:true},
+  {id:'d09',type:'income',name:'스톡이미지 판매',amount:130000,source:'Shutterstock',category:'부업 수입',date:'2026-05-01',settled:true},
+  {id:'d10',type:'income',name:'전자책 판매',amount:200000,source:'크몽',category:'부업 수입',date:'2026-05-03',settled:true},
+  {id:'d11',type:'income',name:'컨설팅 수수료',amount:300000,source:'개인 의뢰',category:'강의/컨설팅',date:'2026-05-09',settled:true},
+  {id:'d12',type:'income',name:'SNS 마케팅 의뢰',amount:250000,source:'인스타그램',category:'부업 수입',date:'2026-05-06',settled:true},
+  {id:'d13',type:'income',name:'앱 개발 수수료',amount:850000,source:'프리랜서 E사',category:'프리랜서 수입',date:'2026-05-18',settled:false,settlement_date:'2026-05-28'},
+  {id:'d14',type:'income',name:'기타 부업',amount:400000,source:'기타',category:'기타 수입',date:'2026-05-02',settled:true},
+];
+const DEMO_ETC = [
+  {id:'d15',type:'expense',name:'월세',amount:650000,source:'',category:'고정 지출',date:'2026-05-05'},
+  {id:'d16',type:'expense',name:'식비',amount:185000,source:'',category:'식비',date:'2026-05-13'},
+  {id:'d17',type:'expense',name:'통신비',amount:60000,source:'',category:'통신비',date:'2026-05-10'},
+  {id:'d18',type:'expense',name:'구독 서비스',amount:40000,source:'',category:'구독 서비스',date:'2026-05-01'},
+  {id:'d19',type:'invest',name:'ETF 적립',amount:300000,source:'',category:'주식/ETF',date:'2026-05-04'},
+  {id:'d20',type:'invest',name:'연금저축',amount:200000,source:'',category:'연금',date:'2026-05-04'},
+];
+const DEMO_ALL = [...DEMO_INCOME, ...DEMO_ETC];
+const DEMO_6M = [
+  {lbl:'12월',inc:2800000,exp:850000,inv:400000},
+  {lbl:'1월', inc:4200000,exp:1100000,inv:500000},
+  {lbl:'2월', inc:6800000,exp:950000,inv:300000},
+  {lbl:'3월', inc:3500000,exp:1200000,inv:600000},
+  {lbl:'4월', inc:5100000,exp:1050000,inv:400000},
+  {lbl:'5월', inc:10450000,exp:935000,inv:500000},
+];
+
+function loadDemoData() {
+  demoMode = true;
+  cache = DEMO_ALL;
+  allCache = DEMO_INCOME.filter(r=>!r.settled && r.settlement_date);
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  updateRangeFromMonth();
+  renderMetrics();
+  renderSources();
+  renderTxList();
+  renderSettlementBar();
+  load6MonthFlow();
+}
 
 // Date range state
 let rangeStart = '', rangeEnd = '';
@@ -614,8 +668,10 @@ function renderMetrics() {
   const inv = cache.filter(r=>r.type==='invest').reduce((a,r)=>a+Number(r.amount),0);
   const net = inc - exp - inv;
   const w = n => n.toLocaleString()+'원';
+  const incItems = cache.filter(r=>r.type==='income');
+  const uniqueSrc = new Set(incItems.map(r=>r.source||r.name).filter(Boolean)).size;
   document.getElementById('m-inc').textContent = w(inc);
-  document.getElementById('m-inc-n').textContent = cache.filter(r=>r.type==='income').length+'건';
+  document.getElementById('m-inc-n').textContent = uniqueSrc + '개 출처';
   document.getElementById('m-exp').textContent = w(exp);
   document.getElementById('m-exp-n').textContent = cache.filter(r=>r.type==='expense').length+'건';
   document.getElementById('m-inv').textContent = w(inv);
@@ -670,7 +726,13 @@ async function load6MonthFlow() {
   }
   const s = firstOfMonth(months[0].y, months[0].m);
   const e = lastOfMonth(months[5].y, months[5].m);
-  const { data } = await sb.from('transactions').select('type,amount,date').gte('date',s).lte('date',e);
+  let data;
+  if (demoMode) {
+    data = DEMO_ALL;
+  } else {
+    const res = await sb.from('transactions').select('type,amount,date').gte('date',s).lte('date',e);
+    data = res.data;
+  }
   if (!data) return;
 
   const sum = (type, y, m) => data.filter(r=>r.type===type && new Date(r.date).getFullYear()===y && new Date(r.date).getMonth()+1===m).reduce((a,r)=>a+Number(r.amount),0);
@@ -681,9 +743,9 @@ async function load6MonthFlow() {
     data:{
       labels: months.map(m=>m.lbl),
       datasets:[
-        {label:'수입', data:months.map(m=>sum('income',m.y,m.m)), backgroundColor:'#5DCAA5', borderRadius:3},
-        {label:'지출', data:months.map(m=>sum('expense',m.y,m.m)), backgroundColor:'#F0997B', borderRadius:3},
-        {label:'투자', data:months.map(m=>sum('invest',m.y,m.m)), backgroundColor:'#AFA9EC', borderRadius:3}
+        {label:'수입', data:months.map(m=>sum('income',m.y,m.m)), backgroundColor:'#34D399', borderRadius:3},
+        {label:'지출', data:months.map(m=>sum('expense',m.y,m.m)), backgroundColor:'#FCA5A5', borderRadius:3},
+        {label:'투자', data:months.map(m=>sum('invest',m.y,m.m)), backgroundColor:'#818CF8', borderRadius:3}
       ]
     },
     options:{
